@@ -24,7 +24,7 @@ data ResponseType
 
 data Response
   = TasksResponse UTCTime IdLength Project [Task]
-  | TaskResponse UTCTime IdLength Task
+  | TaskResponse UTCTime Task
   | WtimeResponse UTCTime MoreOpt [DailyWorktime]
   | StatusResponse UTCTime (Maybe Task)
   | VersionResponse String
@@ -34,7 +34,7 @@ data Response
 
 send :: ResponseType -> Response -> IO ()
 send rtype (TasksResponse now idLength ctx tasks) = showTasks now idLength rtype ctx tasks
-send rtype (TaskResponse now idLength task) = showTask now idLength rtype task
+send rtype (TaskResponse now task) = showTask now rtype task
 send rtype (WtimeResponse now moreOpt wtimes) = showWtime now rtype moreOpt wtimes
 send rtype (StatusResponse now task) = showStatus now rtype task
 send rtype (VersionResponse version) = showVersion rtype version
@@ -102,9 +102,9 @@ showTasksJson now tasks =
 -- Task
 
 showTask :: UTCTime -> IdLength -> ResponseType -> Task -> IO ()
-showTask now idLength Text task = do
+showTask now Text task = do
   putStrLn ""
-  putStrLn $ showTaskText now idLength task
+  putStrLn $ showTaskText now task
 showTask now idLength Json task =
   BL.putStr $
     encode $
@@ -114,13 +114,13 @@ showTask now idLength Json task =
         ]
 
 showTaskText :: UTCTime -> IdLength -> Task -> String
-showTaskText now idLength task = render $ head : body
+showTaskText now task = render $ head : body
   where
     head = map (bold . underline . cell) ["KEY", "VALUE"]
     body =
       transpose
         [ map cell ["ID", "DESC", "PROJECT", "ACTIVE", "DUE", "WORKTIME", "DONE", "DELETED"],
-          [ red $ cell $ shortenId idLength $ getId task,
+          [ red $ cell $ id $ getId task,
             cell $ getDesc task,
             blue $ cell $ fromMaybe "" $ getProject task,
             green $ cell $ fromMaybe "" $ show <$> getActive task,
